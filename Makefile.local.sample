@@ -1,0 +1,6 @@
+# Developer's local environment. 
+# Rename this file to Makefile.local to compile the code
+
+# Wifi SSID and password
+CFLAGS += -DWIFI_SSID="MY_WIFI_SSID" 
+CFLAGS += -DWIFI_PASSWORD="MY_WIFI_PASS"
