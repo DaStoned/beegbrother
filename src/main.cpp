@@ -93,7 +93,7 @@ static void ICACHE_FLASH_ATTR loop(os_event_t *events)
         time_prev = system_get_time();
     }
     if (time_prev + PRINT_DELAY_US <= time_now || time_prev > time_now) {
-        os_printf("Hello %ld prev: %lu now: %lu\n", i++, time_prev, time_now);
+        os_printf("Hello %d prev: %u now: %u\n", i++, time_prev, time_now);
         time_prev = time_now;
 
           //Do blinky stuff
@@ -124,8 +124,7 @@ void ICACHE_FLASH_ATTR user_init()
     os_memcpy(&stationConf.password, password, 64);
     wifi_station_set_config(&stationConf);
 
-    // init gpio subsytem
-    gpio_init();
+
 
     //Start os task
     system_os_task(loop, user_procTaskPrio,user_procTaskQueue, user_procTaskQueueLen);

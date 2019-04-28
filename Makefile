@@ -18,7 +18,8 @@ CCFLAGS += \
 	-mtext-section-literals \
 	-ffunction-sections \
 	-fdata-sections \
-	-fno-builtin-printf
+	-fno-builtin-printf \
+	-Wall
 
 INCLUDES = -I$(INC_DIR)
 CFLAGS = $(CCFLAGS) $(DEFINES) $(EXTRA_CCFLAGS) $(INCLUDES)
@@ -29,7 +30,6 @@ LDFLAGS = -Teagle.app.v6.ld -Wl,--gc-sections
 VPATH = $(SRC_DIR):$(INC_DIR)
 SOURCES := $(notdir $(wildcard $(SRC_DIR)/*.cpp))
 OBJECTS := $(patsubst %.cpp,$(BIN_DIR)/%.o,$(SOURCES))
-#OBJECTS := $(SOURCES:.cpp=.o)
 
 # Pull in settings which are local to developer's environment
 include Makefile.local
