@@ -1,8 +1,6 @@
 CC = xtensa-lx106-elf-gcc
 
-size_map := 4
-
-DEFINES += -DSPI_FLASH_SIZE_MAP=$(size_map) -DICACHE_FLASH
+DEFINES += -DICACHE_FLASH
 CCFLAGS += \
 	-Os \
 	-Wpointer-arith \
@@ -40,7 +38,7 @@ bin/beegbrother.o: src/main.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $^ -o $@
 
 flash: bin/beegbrother-0x00000.bin bin/beegbrother-0x10000.bin
-	esptool write_flash --flash_mode dio --flash_freq 26m --flash_size detect 0 bin/beegbrother-0x00000.bin 0x10000 bin/beegbrother-0x10000.bin
+	esptool write_flash --flash_mode $(ESP_FLASH_MODE) --flash_freq $(ESP_FLASH_FREQ) --flash_size detect 0 bin/beegbrother-0x00000.bin 0x10000 bin/beegbrother-0x10000.bin
 
 clean:
 	rm -f bin/beegbrother bin/beegbrother.o bin/beegbrother-0x00000.bin bin/beegbrother-0x10000.bin

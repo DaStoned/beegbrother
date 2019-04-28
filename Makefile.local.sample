@@ -4,3 +4,20 @@
 # Wifi SSID and password
 CFLAGS += -DWIFI_SSID="MY_WIFI_SSID" 
 CFLAGS += -DWIFI_PASSWORD="MY_WIFI_PASS"
+
+# SPI Flash parameters for the ESP8266 board
+# The settings below work for the Wemos D1 mini
+
+# Flash size map for OTA versions according to SDK
+# 0= 512KB( 256KB+ 256KB)"
+# 2=1024KB( 512KB+ 512KB)"
+# 3=2048KB( 512KB+ 512KB)"
+# 4=4096KB( 512KB+ 512KB)"
+# 5=2048KB(1024KB+1024KB)"
+# 6=4096KB(1024KB+1024KB)"
+# 7=4096KB(2048KB+2048KB) not support ,just for compatible with nodeMCU board"
+# 8=8192KB(1024KB+1024KB)"
+# 9=16384KB(1024KB+1024KB)"
+CFLAGS += -DSPI_FLASH_SIZE_MAP=4
+ESP_FLASH_MODE = dio
+ESP_FLASH_FREQ = 26m
