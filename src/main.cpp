@@ -2,12 +2,26 @@
 @file main.c
 @brief Entry point for beegbrother application
 */
-#include "osapi.h"
-#include "user_interface.h"
+
+#include "common.hpp"
+
+extern "C" {
+    // Include the C-only SDK headers
+    #include "osapi.h"
+    #include "user_interface.h"
+
+    // Declare these as C functions to allow SDK to call them
+    void ICACHE_FLASH_ATTR user_pre_init(void);
+    void ICACHE_FLASH_ATTR user_init();
+}
 
 #define user_procTaskPrio       0
 #define user_procTaskQueueLen   1
 #define PRINT_DELAY_US          1000000LL
+
+#define APP_VERSION_MAJOR       0
+#define APP_VERSION_MINOR       1
+#define APP_VERSION_STR         (TOSTRING(APP_VERSION_MAJOR) "." TOSTRING(APP_VERSION_MINOR))
 
 os_event_t    user_procTaskQueue[user_procTaskQueueLen];
 static void loop(os_event_t *events);
@@ -65,7 +79,7 @@ static const partition_item_t at_partition_table[] = {
 void ICACHE_FLASH_ATTR user_pre_init(void) {
     // Partition table mandated by SDK 3.0.0
     if(!system_partition_table_regist(at_partition_table, sizeof(at_partition_table)/sizeof(at_partition_table[0]),SPI_FLASH_SIZE_MAP)) {
-        os_printf("system_partition_table_regist fail\n");
+        os_printf("Failed to register system partition table!\n");
         while(1);
     }
 }
@@ -79,7 +93,7 @@ static void ICACHE_FLASH_ATTR loop(os_event_t *events)
         time_prev = system_get_time();
     }
     if (time_prev + PRINT_DELAY_US <= time_now || time_prev > time_now) {
-        os_printf("Hello %ld prev: %lu now: %lu\n\r", i++, time_prev, time_now);
+        os_printf("Hello %ld prev: %lu now: %lu\n", i++, time_prev, time_now);
         time_prev = time_now;
 
           //Do blinky stuff
@@ -101,7 +115,7 @@ void ICACHE_FLASH_ATTR user_init()
     char password[64] = WIFI_PASSWORD;
     struct station_config stationConf;
 
-    os_printf("SDK version:%s\n", system_get_sdk_version());
+    os_printf("App version: %s, SDK version:%s\n", APP_VERSION_STR, system_get_sdk_version());
     //Set station mode
     wifi_set_opmode(STATION_MODE);
 

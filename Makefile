@@ -1,4 +1,4 @@
-CC = xtensa-lx106-elf-gcc
+CC = xtensa-lx106-elf-g++
 
 DEFINES += -DICACHE_FLASH
 CCFLAGS += \
@@ -34,7 +34,7 @@ bin/beegbrother-0x00000.bin: bin/beegbrother
 bin/beegbrother: bin/beegbrother.o
 	$(CC) $^ $(LDFLAGS) $(LOADLIBES) $(LDLIBS) -o $@
 
-bin/beegbrother.o: src/main.c
+bin/beegbrother.o: src/main.cpp | bin
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $^ -o $@
 
 flash: bin/beegbrother-0x00000.bin bin/beegbrother-0x10000.bin
