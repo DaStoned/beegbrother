@@ -1,6 +1,6 @@
 /**
 @file DriverGpio.hpp
-@brief Declare a driver GPIO
+@brief Declare a driver for GPIO
 */
 
 #ifndef _DRIVER_GPIO_HPP_

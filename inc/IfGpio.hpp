@@ -22,7 +22,7 @@ public:
     virtual bool init();
     virtual void setPinMode(Pin pin, Mode mode);
     virtual Mode getPinMode(Pin pin) const;
-    virtual void setPin(Pin pin);
+    virtual void setPin(Pin pin, bool value);
     virtual bool getPin(Pin pin) const;
 };
 
