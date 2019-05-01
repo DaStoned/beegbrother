@@ -23,7 +23,7 @@ CCFLAGS += \
 
 INCLUDES = -I$(INC_DIR)
 CFLAGS = $(CCFLAGS) $(DEFINES) $(EXTRA_CCFLAGS) $(INCLUDES)
-CXXFLAGS = $(CFLAGS)
+CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-non-call-exceptions -fno-rtti -fno-use-cxa-atexit -ffunction-sections -fdata-sections -fno-builtin -std=c++11
 LDLIBS = -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static -Wl,--start-group -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip -lwpa -lcrypto -lmain -Wl,--end-group
 LDFLAGS = -Teagle.app.v6.ld -Wl,--gc-sections
 
@@ -47,7 +47,7 @@ $(BIN_DIR)/beegbrother: $(OBJECTS) | $(BIN_DIR)
 	$(CXX) $^ $(LDFLAGS) $(LOADLIBES) $(LDLIBS) -o $@
 
 $(BIN_DIR)/%.o: %.cpp | $(BIN_DIR)
-	$(CXX) $(CPPFLAGS) $(CFLAGS) -c $^ -o $@
+	$(CXX) $(CXXFLAGS) -c $^ -o $@
 
 flash: $(BIN_DIR)/beegbrother-0x00000.bin $(BIN_DIR)/beegbrother-0x10000.bin
 	esptool write_flash --flash_mode $(ESP_FLASH_MODE) --flash_freq $(ESP_FLASH_FREQ) --flash_size detect 0 $(BIN_DIR)/beegbrother-0x00000.bin 0x10000 $(BIN_DIR)/beegbrother-0x10000.bin

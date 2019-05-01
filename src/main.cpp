@@ -4,6 +4,9 @@
 */
 
 #include "common.hpp"
+#include "DriverGpio.hpp"
+#include "Timers.hpp"
+#include "DriverAm2302.hpp"
 
 extern "C" {
     // Include the C-only SDK headers
@@ -124,9 +127,14 @@ void ICACHE_FLASH_ATTR user_init()
     os_memcpy(&stationConf.password, password, 64);
     wifi_station_set_config(&stationConf);
 
-
+    DriverGpio gpio;
+    Timers timers;
+    DriverAm2302 tempSens(gpio, timers);
+    tempSens.init(IfGpio::PIN4);
+    tempSens.update();
 
     //Start os task
     system_os_task(loop, user_procTaskPrio,user_procTaskQueue, user_procTaskQueueLen);
     system_os_post(user_procTaskPrio, 0, 0 );
 }
+

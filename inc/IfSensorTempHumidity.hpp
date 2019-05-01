@@ -8,9 +8,9 @@
 
 class IfSensorTempHumidity {
 public:
-    virtual bool update();
-    virtual unsigned int getHumidity() const;
-    virtual int getTemperature() const;
+    virtual bool update() = 0;
+    virtual unsigned int getHumidity() const = 0;
+    virtual int getTemperature() const = 0;
 };
 
 #endif // _IF_SENSOR_TEMP_HUMIDITY_HPP_

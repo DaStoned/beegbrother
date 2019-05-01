@@ -19,7 +19,7 @@ void Timers::delay(uint32_t us) const {
     os_delay_us(delay_period);
 }
 
-uint32_t Timers::getSystemTime() const {
+uint32_t Timers::getSystemTimeUs() const {
     return system_get_time();
 }
 
