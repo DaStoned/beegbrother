@@ -15,7 +15,7 @@ public:
     virtual void delay(uint32_t us) const;
     virtual uint32_t getSystemTimeUs() const;
     virtual Timespan beginStopwatch() const;
-    virtual Timespan endStopwatch(Timespan start) const;
+    virtual Timespan readStopwatch(Timespan start) const;
 private:
 
 };

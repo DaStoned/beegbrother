@@ -46,12 +46,12 @@ extern "C" {
     (i==14)? GPIO_PIN_REG_14: \
     GPIO_PIN_REG_15
 
-bool DriverGpio::init() {
+bool ICACHE_FLASH_ATTR DriverGpio::init() {
     gpio_init();
     return true;
 }
 
-void DriverGpio::setPinMode(Pin pin, Mode mode) {
+void ICACHE_FLASH_ATTR DriverGpio::setPinMode(Pin pin, Mode mode) {
     switch (mode) {
         case MODE_IN:
             gpio_output_set(0, 0, 0, 1 << pin);
@@ -67,15 +67,15 @@ void DriverGpio::setPinMode(Pin pin, Mode mode) {
     }
 }
 
-IfGpio::Mode DriverGpio::getPinMode(Pin pin) const {
+IfGpio::Mode ICACHE_FLASH_ATTR DriverGpio::getPinMode(Pin pin) const {
     // TODO: figure out how it's possible to read the mode
     return MODE_OUT;
 }
 
-void DriverGpio::setPin(Pin pin, bool value) {
+void ICACHE_FLASH_ATTR DriverGpio::setPin(Pin pin, bool value) {
     GPIO_OUTPUT_SET(static_cast<unsigned int>(pin), value ? 1 : 0);
 }
 
-bool DriverGpio::getPin(Pin pin) const {
+bool ICACHE_FLASH_ATTR DriverGpio::getPin(Pin pin) const {
     return (GPIO_INPUT_GET(pin) != 0);
 }

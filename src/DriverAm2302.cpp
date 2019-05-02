@@ -12,41 +12,48 @@ extern "C" {
     #include "user_interface.h"
 }
 
-bool DriverAm2302::init(IfGpio::Pin pin) {
+bool ICACHE_FLASH_ATTR DriverAm2302::init(IfGpio::Pin pin) {
     mPin = pin;
+    os_printf("Local GPIO: %08X\n", (unsigned int) &mGpio);
+    mGpio.setPinMode(mPin, IfGpio::MODE_OUT);
+    mGpio.setPin(mPin, true);
     return true;
 }
 
-bool DriverAm2302::update() {
+bool ICACHE_FLASH_ATTR DriverAm2302::update() {
     bool pinSt = false, pinStNew = false;
     IfTimers::Timespan ts, period;
-    os_printf("Starting data transfer\n");
+    os_printf("Starting data transfer on pin %u\n", (unsigned int) mPin);
     // Request data transfer
     mGpio.setPinMode(mPin, IfGpio::MODE_OUT);
-    setPinWait(1, 10000);
-    setPinWait(0, 10000);
-    setPinWait(1, 40);
+    setPinWait(true, 25000);
+    setPinWait(false, 20000);
+    setPinWait(true, 40);
     mGpio.setPinMode(mPin, IfGpio::MODE_IN_PULLUP);
-    mTimers.delay(5);
     pinSt = mGpio.getPin(mPin);
+    os_printf("Read %u\n", pinSt ? 1 : 0);
     ts = mTimers.beginStopwatch();
     pinStNew = pinSt;
-    while (1) {
-        mTimers.delay(1);
+    while (mTimers.readStopwatch(ts) < 1000000) {
+        //mTimers.delay(1);
         pinStNew = mGpio.getPin(mPin);
         if (pinStNew != pinSt) {
-            period = mTimers.endStopwatch(ts);
+            period = mTimers.readStopwatch(ts);
             os_printf("Pin %u %u->%u after %u us\n", mPin, pinSt ? 1 : 0, pinStNew ? 1 : 0, (unsigned int) period);
             ts = mTimers.beginStopwatch();
             pinSt = pinStNew;
         }
-        system_soft_wdt_feed();
+        if (mTimers.readStopwatch(ts) % 100000 == 0) {
+            os_printf("Wait %u\n", pinStNew ? 1 : 0);
+            system_soft_wdt_feed();
+            mTimers.delay(1);
+        }
     }
     // Switch
     return true;
 }
 
-void DriverAm2302::setPinWait(bool value, uint32_t durationUs) const {
+void ICACHE_FLASH_ATTR DriverAm2302::setPinWait(bool value, uint32_t durationUs) const {
     mGpio.setPin(mPin, value);
     if (durationUs > 0) {
         mTimers.delay(durationUs);

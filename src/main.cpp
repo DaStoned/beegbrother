@@ -19,7 +19,7 @@ extern "C" {
 }
 
 #define user_procTaskPrio       0
-#define user_procTaskQueueLen   1
+#define user_procTaskQueueLen   4
 #define PRINT_DELAY_US          1000000LL
 
 #define APP_VERSION_MAJOR       0
@@ -112,6 +112,24 @@ static void ICACHE_FLASH_ATTR loop(os_event_t *events)
     system_os_post(user_procTaskPrio, 0, 0 );
 }
 
+DriverGpio gpio;
+Timers timers;
+
+static void ICACHE_FLASH_ATTR readTemp(os_event_t *events) {
+    os_printf("Timer fired, updating temperature\n");
+    DriverAm2302 tempSens(gpio, timers);
+    os_printf("Object created\n");
+    os_printf("Global GPIO: %08X\n", (unsigned int) &gpio);
+    tempSens.init(IfGpio::PIN4);
+    os_printf("Init done\n");
+    tempSens.update();
+    os_printf("Temp: %d C\n", tempSens.getTemperature());
+    system_os_post(user_procTaskPrio, 1, 0 );
+}
+
+
+static volatile os_timer_t timer_readtemp;
+
 void ICACHE_FLASH_ATTR user_init()
 {
     char ssid[32] = WIFI_SSID;
@@ -127,14 +145,14 @@ void ICACHE_FLASH_ATTR user_init()
     os_memcpy(&stationConf.password, password, 64);
     wifi_station_set_config(&stationConf);
 
-    DriverGpio gpio;
-    Timers timers;
-    DriverAm2302 tempSens(gpio, timers);
-    tempSens.init(IfGpio::PIN4);
-    tempSens.update();
+
 
     //Start os task
     system_os_task(loop, user_procTaskPrio,user_procTaskQueue, user_procTaskQueueLen);
     system_os_post(user_procTaskPrio, 0, 0 );
+    
+    //tempSens.init(IfGpio::PIN4);
+    os_timer_setfn((os_timer_t*)&timer_readtemp, (os_timer_func_t *)readTemp, NULL);
+    os_timer_arm((os_timer_t*)&timer_readtemp, 2000, 1);
 }
 
