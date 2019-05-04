@@ -28,6 +28,6 @@ IfTimers::Timespan ICACHE_FLASH_ATTR Timers::beginStopwatch() const {
 }
 
 
-IfTimers::Timespan ICACHE_FLASH_ATTR Timers::readStopwatch(Timespan start) const {
-    return  system_get_time() - start;
+unsigned int ICACHE_FLASH_ATTR Timers::readStopwatch(Timespan start) const {
+    return (unsigned int) (system_get_time() - start);
 }

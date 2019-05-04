@@ -126,16 +126,15 @@ static void ICACHE_FLASH_ATTR loop(os_event_t *events)
 
 DriverGpio gpio;
 Timers timers;
+DriverAm2302 tempSens(gpio, timers);
 
 static void ICACHE_FLASH_ATTR readTemp(os_event_t *events) {
     os_printf("Timer fired, updating temperature\n");
-    DriverAm2302 tempSens(gpio, timers);
-    os_printf("Object created\n");
-    os_printf("Global GPIO: %08X\n", (unsigned int) &gpio);
-    tempSens.init(IfGpio::PIN4);
-    os_printf("Init done\n");
-    tempSens.update();
-    os_printf("Temp: %d C\n", tempSens.getTemperature());
+    if (tempSens.update()) {
+        os_printf("Temp: %d dC, humidity: %u d%%\n", tempSens.getTemperature(), tempSens.getHumidity());
+    } else {
+        os_printf("Failed to update sensor!\n");
+    }
     system_os_post(user_procTaskPrio, 1, 0 );
 }
 
@@ -144,29 +143,31 @@ static volatile os_timer_t timer_readtemp;
 
 void ICACHE_FLASH_ATTR user_init()
 {
-    char ssid[32] = WIFI_SSID;
-    char password[64] = WIFI_PASSWORD;
-    struct station_config stationConf;
+    // Run C++ global constructors
     do_global_ctors();
 
     os_printf("App version: %s, SDK version:%s\n", APP_VERSION_STR, system_get_sdk_version());
+
+    // char ssid[32] = WIFI_SSID;
+    // char password[64] = WIFI_PASSWORD;
+    // struct station_config stationConf;
     //Set station mode
-    wifi_set_opmode(STATION_MODE);
+    // wifi_set_opmode(STATION_MODE);
 
-    //Set ap settings
-    os_memcpy(&stationConf.ssid, ssid, 32);
-    os_memcpy(&stationConf.password, password, 64);
-    wifi_station_set_config(&stationConf);
+    // //Set ap settings
+    // os_memcpy(&stationConf.ssid, ssid, 32);
+    // os_memcpy(&stationConf.password, password, 64);
+    // wifi_station_set_config(&stationConf);
 
-
-
-    //Start os task
-    system_os_task(loop, user_procTaskPrio,user_procTaskQueue, user_procTaskQueueLen);
-    system_os_post(user_procTaskPrio, 0, 0 );
     if (!gpio.init()) {
         os_printf("Failed to init GPIO");
     }
-    //tempSens.init(IfGpio::PIN4);
+
+    // Start blinky task
+    system_os_task(loop, user_procTaskPrio,user_procTaskQueue, user_procTaskQueueLen);
+    system_os_post(user_procTaskPrio, 0, 0 );
+
+    tempSens.init(IfGpio::PIN4);
     os_timer_setfn((os_timer_t*)&timer_readtemp, (os_timer_func_t *)readTemp, NULL);
-    os_timer_arm((os_timer_t*)&timer_readtemp, 2000, 1);
+    os_timer_arm((os_timer_t*)&timer_readtemp, 5000, 1);
 }

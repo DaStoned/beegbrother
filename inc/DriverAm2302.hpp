@@ -11,6 +11,8 @@
 
 #include <stdint.h>
 
+// The length of the AM2302 message in bytes
+#define AM2302_MSG_LEN_B  5
 
 class IfTimers;
 
@@ -22,6 +24,7 @@ public:
     , mTimers(timers)
     , mHumidity(0)
     , mTemperature(0)
+    , mBuffer{}
     { }
     bool init(IfGpio::Pin pin);
     virtual bool update();
@@ -34,6 +37,7 @@ private:
     IfTimers& mTimers;
     unsigned int mHumidity;
     int mTemperature;
+    uint8_t mBuffer[AM2302_MSG_LEN_B];
 };
 
 #endif // _DRIVER_AM2302_HPP_
