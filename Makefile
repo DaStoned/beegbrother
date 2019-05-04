@@ -31,7 +31,7 @@ INCLUDES = -I$(INC_DIR)
 CFLAGS = $(CCFLAGS) $(DEFINES) $(EXTRA_CCFLAGS) $(INCLUDES)
 CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-non-call-exceptions -fno-rtti -fno-use-cxa-atexit -ffunction-sections -fdata-sections -fno-builtin -std=c++11
 LDLIBS = -nostdlib -Wl,--no-check-sections -u call_user_start -Wl,-static -Wl,--start-group -lc -lgcc -lhal -lphy -lpp -lnet80211 -llwip -lwpa -lcrypto -lmain -Wl,--end-group
-LDFLAGS = -Teagle.app.v6.ld -Wl,--gc-sections
+LDFLAGS = -Tsupport/ld/eagle.app.v6.ld -Wl,--gc-sections
 MAPFLAGS = -Wl,-Map=$(BIN_DIR)/$(PROJ_NAME).map #-Wl,--cref
 
 VPATH = $(SRC_DIR):$(INC_DIR)
