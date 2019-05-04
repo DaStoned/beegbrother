@@ -79,6 +79,18 @@ static const partition_item_t at_partition_table[] = {
     { SYSTEM_PARTITION_SYSTEM_PARAMETER,    SYSTEM_PARTITION_SYSTEM_PARAMETER_ADDR, 0x3000},
 };
 
+// Call global constructors
+// https://www.esp8266.com/viewtopic.php?f=9&t=478&start=8
+extern void (*__init_array_start)(void);
+extern void (*__init_array_end)(void);
+
+static void do_global_ctors(void)
+{
+        void (**p)(void);
+        for (p = &__init_array_start; p != &__init_array_end; ++p)
+                (*p)();
+}
+
 void ICACHE_FLASH_ATTR user_pre_init(void) {
     // Partition table mandated by SDK 3.0.0
     if(!system_partition_table_regist(at_partition_table, sizeof(at_partition_table)/sizeof(at_partition_table[0]),SPI_FLASH_SIZE_MAP)) {
@@ -135,6 +147,7 @@ void ICACHE_FLASH_ATTR user_init()
     char ssid[32] = WIFI_SSID;
     char password[64] = WIFI_PASSWORD;
     struct station_config stationConf;
+    do_global_ctors();
 
     os_printf("App version: %s, SDK version:%s\n", APP_VERSION_STR, system_get_sdk_version());
     //Set station mode
@@ -150,9 +163,10 @@ void ICACHE_FLASH_ATTR user_init()
     //Start os task
     system_os_task(loop, user_procTaskPrio,user_procTaskQueue, user_procTaskQueueLen);
     system_os_post(user_procTaskPrio, 0, 0 );
-    
+    if (!gpio.init()) {
+        os_printf("Failed to init GPIO");
+    }
     //tempSens.init(IfGpio::PIN4);
     os_timer_setfn((os_timer_t*)&timer_readtemp, (os_timer_func_t *)readTemp, NULL);
     os_timer_arm((os_timer_t*)&timer_readtemp, 2000, 1);
 }
-
