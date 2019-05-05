@@ -1,12 +1,12 @@
 /**
-@file DriverHx811.hpp
+@file DriverHx711.hpp
 @brief Declare a driver for a load sensor implemented with HX711 24-bit ADC
 
 We use GPIO bitbanging to implement the SPI like protocol
 */
 
-#ifndef _DRIVER_HX811_HPP_
-#define _DRIVER_HX811_HPP_
+#ifndef _DRIVER_HX711_HPP_
+#define _DRIVER_HX711_HPP_
 
 #include "IfSensorLoad.hpp"
 #include "IfGpio.hpp"
@@ -15,16 +15,16 @@ We use GPIO bitbanging to implement the SPI like protocol
 
 class IfTimers;
 
-class DriverHx811 : public IfSensorLoad {
+class DriverHx711 : public IfSensorLoad {
 public:
     static const unsigned int sensorMsgLenB = 3;
     static const unsigned int minSampleIntervalUs = 50000;
-    /// HX811 output settling time is 400 ms at 10 Hz sampling interval.
+    /// HX711 output settling time is 400 ms at 10 Hz sampling interval.
     /// This is approximately the time it takes to wake up from sleep and 
     /// take a sample.
     static const unsigned int spanSettleOutput = 500000;
 
-    DriverHx811(IfGpio& gpio, IfTimers& timers) 
+    DriverHx711(IfGpio& gpio, IfTimers& timers) 
     : mPinClk(IfGpio::FIRST_PIN_UNUSED)
     , mPinData(IfGpio::FIRST_PIN_UNUSED)
     , mGpio(gpio)
@@ -52,4 +52,4 @@ private:
     bool mInSleep;
 };
 
-#endif // _DRIVER_HX811_HPP_
+#endif // _DRIVER_HX711_HPP_

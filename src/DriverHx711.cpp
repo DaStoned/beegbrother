@@ -1,9 +1,9 @@
 /**
-@file DriverHx811.cpp
-@brief Implement a driver for HX811 load sensor
+@file DriverHx711.cpp
+@brief Implement a driver for HX711 load sensor
 */
 
-#include "DriverHx811.hpp"
+#include "DriverHx711.hpp"
 #include "IfGpio.hpp"
 #include "IfTimers.hpp"
 extern "C" {
@@ -17,7 +17,7 @@ static const unsigned int spanHalfClockUs = 1;
 /// Duration of sleep activation pulse
 static const unsigned int spanSleepPulseUs = 60;
 
-bool ICACHE_FLASH_ATTR DriverHx811::init(IfGpio::Pin pinClk, IfGpio::Pin pinData) {
+bool ICACHE_FLASH_ATTR DriverHx711::init(IfGpio::Pin pinClk, IfGpio::Pin pinData) {
     mPinClk = pinClk;
     mPinData = pinData;
     mGpio.setPinMode(mPinClk, IfGpio::MODE_OUT, false);
@@ -25,30 +25,30 @@ bool ICACHE_FLASH_ATTR DriverHx811::init(IfGpio::Pin pinClk, IfGpio::Pin pinData
     return true;
 }
 
-bool ICACHE_FLASH_ATTR DriverHx811::canUpdate() const {
+bool ICACHE_FLASH_ATTR DriverHx711::canUpdate() const {
     if (mPinData == IfGpio::FIRST_PIN_UNUSED) {
-        os_printf("HX811: Driver not initialized\n");
+        os_printf("HX711: Driver not initialized\n");
         return false;
     }
 
     return !mGpio.getPin(mPinData);
 }
 
-bool ICACHE_FLASH_ATTR DriverHx811::update() {
+bool ICACHE_FLASH_ATTR DriverHx711::update() {
     unsigned int bitNum = 0;
     
     if (mPinData == IfGpio::FIRST_PIN_UNUSED || mPinClk == IfGpio::FIRST_PIN_UNUSED) {
-        os_printf("HX811: Driver not initialized\n");
+        os_printf("HX711: Driver not initialized\n");
         return false;
     }
 
     if (mInSleep) {
-        // Wake up the HX811 from sleep. This will be slow.
+        // Wake up the HX711 from sleep. This will be slow.
         wakeFromSleep();
     }
 
     if (!canUpdate()) {
-        os_printf("HX811: Not ready for reading! (wait %u ms between updates)\n", minSampleIntervalUs / 1000);
+        os_printf("HX711: Not ready for reading! (wait %u ms between updates)\n", minSampleIntervalUs / 1000);
         return false;
     }
     // Set initial state for CLK
@@ -69,7 +69,7 @@ bool ICACHE_FLASH_ATTR DriverHx811::update() {
     mGpio.setPin(mPinClk, true);
     mTimers.delay(spanHalfClockUs);
     mGpio.setPin(mPinClk, false);
-    os_printf("HX811: Buffer 0x%08X, line %u\n", mBuffer, mGpio.getPin(mPinData) ? 1 : 0);
+    os_printf("HX711: Buffer 0x%08X, line %u\n", mBuffer, mGpio.getPin(mPinData) ? 1 : 0);
     if (mBuffer & 0x00800000) {
         mBuffer |= 0xFF000000;
     }
@@ -77,14 +77,14 @@ bool ICACHE_FLASH_ATTR DriverHx811::update() {
     return true;
 }
 
-void ICACHE_FLASH_ATTR DriverHx811::toSleep() {
+void ICACHE_FLASH_ATTR DriverHx711::toSleep() {
     mGpio.setPin(mPinClk, true);
     mInSleep = true;
     mTimers.delay(spanSleepPulseUs);
 }
 
-void ICACHE_FLASH_ATTR DriverHx811::wakeFromSleep() {
-    // Wake up the HX811 from sleep. This will be slow.
+void ICACHE_FLASH_ATTR DriverHx711::wakeFromSleep() {
+    // Wake up the HX711 from sleep. This will be slow.
     IfTimers::Timespan ts = mTimers.beginStopwatch();
     mGpio.setPin(mPinClk, false);
     while (!canUpdate() && mTimers.readStopwatch(ts) < spanSettleOutput) {

@@ -7,7 +7,7 @@
 #include "DriverGpio.hpp"
 #include "Timers.hpp"
 #include "DriverAm2302.hpp"
-#include "DriverHx811.hpp"
+#include "DriverHx711.hpp"
 
 extern "C" {
     // Include the C-only SDK headers
@@ -134,7 +134,7 @@ static void ICACHE_FLASH_ATTR mainTask(os_event_t *events)
 DriverGpio gpio;
 Timers timers;
 DriverAm2302 tempSens(gpio, timers);
-DriverHx811 loadSens(gpio, timers);
+DriverHx711 loadSens(gpio, timers);
 
 static volatile os_timer_t timerReadTemp;
 static volatile os_timer_t timerReadLoad;
