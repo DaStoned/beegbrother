@@ -27,6 +27,7 @@ public:
         PIN13,
         PIN14,
         PIN15,
+        // PIN16, Seems to have a special purpose?
 
         FIRST_PIN_UNUSED ///< Must remain last in list
     } Pin;

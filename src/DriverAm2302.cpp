@@ -16,22 +16,22 @@ extern "C" {
 // Detailed timings for the AM2302
 
 // A tiny delay to let the high level propagate to sensor
-const unsigned int preWakeupUs = 10;
+static const unsigned int preWakeupUs = 10;
 // AM2302 requires a low wakeup pulse with duration 1-10 ms
-const unsigned int wakeupPulseUs = 2000;
+static const unsigned int wakeupPulseUs = 2000;
 // AM2302 requires a post wakeup delay of 20-40 us
-const unsigned int postWakeupUs = 30;
+static const unsigned int postWakeupUs = 30;
 // Receiving a message can take up to 5 ms (excluding wakeup pulse)
 // because max message duration is 2 * 80 + 40 * (50 + 70) = 4960 us
-const unsigned int readSampleTimeoutUs = 10000;
+static const unsigned int readSampleTimeoutUs = 10000;
 // Duration of AM2302's "0" pulse is 26-28 us
-const unsigned int thresholdZeroMinUs = 10;
-const unsigned int thresholdZeroMaxUs = 40;
+static const unsigned int thresholdZeroMinUs = 10;
+static const unsigned int thresholdZeroMaxUs = 40;
 // Duration of AM2302's "1" pulse is 70 us
-const unsigned int thresholdOneMinUs = 50;
-const unsigned int thresholdOneMaxUs = 90;
+static const unsigned int thresholdOneMinUs = 50;
+static const unsigned int thresholdOneMaxUs = 90;
 // Duration of AM2302's interval between sending bit pulses
-const unsigned int bitIntervalUs = 50;
+static const unsigned int bitIntervalUs = 50;
 
 bool ICACHE_FLASH_ATTR DriverAm2302::init(IfGpio::Pin pin) {
     mPin = pin;
@@ -57,8 +57,13 @@ bool ICACHE_FLASH_ATTR DriverAm2302::update() {
     unsigned int headerEdges = 0, readDuration = 0, bitDuration, bitNum = 0, glitchNum = 0;
     IfTimers::Timespan readCycleTimer, bitTimer;
     
+    if (mPin == IfGpio::FIRST_PIN_UNUSED) {
+        os_printf("AM2302: Driver not initialized\n");
+        return false;
+    }
+
     if (!canUpdate()) {
-        os_printf("AM2302: must wait 2 seconds between updates!\n");
+        os_printf("AM2302: Must wait %u ms between updates!\n", minSampleIntervalUs / 1000);
         return false;
     }
 

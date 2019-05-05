@@ -7,6 +7,7 @@
 #include "DriverGpio.hpp"
 #include "Timers.hpp"
 #include "DriverAm2302.hpp"
+#include "DriverHx811.hpp"
 
 extern "C" {
     // Include the C-only SDK headers
@@ -129,23 +130,34 @@ static void ICACHE_FLASH_ATTR mainTask(os_event_t *events)
     system_os_post(mainTaskPrio, 0, 0 );
 }
 
+// Global objects
 DriverGpio gpio;
 Timers timers;
 DriverAm2302 tempSens(gpio, timers);
+DriverHx811 loadSens(gpio, timers);
+
 static volatile os_timer_t timerReadTemp;
+static volatile os_timer_t timerReadLoad;
 
 static void ICACHE_FLASH_ATTR readTempCb(os_event_t *events) {
     if (tempSens.update()) {
         os_printf("Temp: %d dC, humidity: %u d%%\n", tempSens.getTemperature(), tempSens.getHumidity());
     } else {
-        os_printf("Failed to update sensor!\n");
+        os_printf("Temp/Hum sensor failed to update!\n");
     }
     IfSensorTempHumidity::DiagInfo diag = {0};
     tempSens.getDiagInfo(&diag);
     if (diag.readFailures || diag.readGlitches) {
-        os_printf("AM2302 Read failures %u, glitches %u\n", diag.readFailures, diag.readGlitches);
+        os_printf("Temp/Hum sensor read failures %u, glitches %u\n", diag.readFailures, diag.readGlitches);
     }
-    system_os_post(mainTaskPrio, 1, 0 );
+}
+
+static void ICACHE_FLASH_ATTR readLoadCb(os_event_t *events) {
+    if (loadSens.update()) {
+        os_printf("Load: %d \n", loadSens.getLoad());
+    } else {
+        os_printf("Load sensor failed to update!\n");
+    }
 }
 
 void ICACHE_FLASH_ATTR user_init()
@@ -172,11 +184,24 @@ void ICACHE_FLASH_ATTR user_init()
         os_printf("Failed to init GPIO!\n");
     }
 
-    // Start blinky task
-    system_os_task(mainTask, mainTaskPrio,mainTaskQueue, mainTaskQueueLen);
+    // Start blinky loop
+    system_os_task(mainTask, mainTaskPrio, mainTaskQueue, mainTaskQueueLen);
     system_os_post(mainTaskPrio, 0, 0 );
 
-    tempSens.init(IfGpio::PIN4);
+    // Start temperature/humidity sensor loop
+    if (!tempSens.init(IfGpio::PIN4)) {
+        os_printf("Failed to init temperature/humidity sensor\n");
+    }
     os_timer_setfn((os_timer_t*)&timerReadTemp, (os_timer_func_t *)readTempCb, NULL);
-    os_timer_arm((os_timer_t*)&timerReadTemp, 10000, 1);
+    os_timer_arm((os_timer_t*)&timerReadTemp, 20000, 1);
+
+    // Start load sensor loop
+    if (!loadSens.init(IfGpio::PIN14, IfGpio::PIN12)) {
+        os_printf("Failed to init load sensor\n");
+    } else {
+        os_printf("Inited load sensor\n");
+    }
+
+    os_timer_setfn((os_timer_t*)&timerReadLoad, (os_timer_func_t *)readLoadCb, NULL);
+    os_timer_arm((os_timer_t*)&timerReadLoad, 2000, 1);
 }

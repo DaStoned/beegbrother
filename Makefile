@@ -63,7 +63,7 @@ $(BIN_DIR)/%.o: %.cpp | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) -c $^ -o $@
 
 flash: $(BIN_DIR)/$(PROJ_NAME).elf-0x00000.bin $(BIN_DIR)/$(PROJ_NAME).elf-0x10000.bin
-	esptool write_flash --flash_mode $(ESP_FLASH_MODE) --flash_freq $(ESP_FLASH_FREQ) --flash_size detect 0 $(BIN_DIR)/$(PROJ_NAME).elf-0x00000.bin 0x10000 $(BIN_DIR)/$(PROJ_NAME).elf-0x10000.bin
+	esptool --baud $(ESP_FLASH_BAUD_RATE) write_flash --flash_mode $(ESP_FLASH_MODE) --flash_freq $(ESP_FLASH_FREQ) --flash_size detect 0 $(BIN_DIR)/$(PROJ_NAME).elf-0x00000.bin 0x10000 $(BIN_DIR)/$(PROJ_NAME).elf-0x10000.bin
 
 
 clean:
