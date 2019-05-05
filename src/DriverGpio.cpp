@@ -51,18 +51,18 @@ bool ICACHE_FLASH_ATTR DriverGpio::init() {
     return true;
 }
 
-void ICACHE_FLASH_ATTR DriverGpio::setPinMode(Pin pin, Mode mode) {
+void ICACHE_FLASH_ATTR DriverGpio::setPinMode(Pin pin, Mode mode, bool defaultOut) {
     switch (mode) {
         case MODE_IN:
-            gpio_output_set(0, 0, 0, 1 << pin);
             PIN_PULLUP_DIS(GPIO_PIN_REG(pin));
+            gpio_output_set(0, 0, 0, 1 << pin);
             break; 
         case MODE_IN_PULLUP:
-            gpio_output_set(0, 0, 0, 1 << pin);
             PIN_PULLUP_EN(GPIO_PIN_REG(pin));
+            gpio_output_set(0, 0, 0, 1 << pin);
             break;
         case MODE_OUT:
-            gpio_output_set(0, 0, 1 << pin, 0);
+            gpio_output_set(defaultOut ? 1 << pin : 0, defaultOut ? 0 : 1 << pin, 1 << pin, 0);
             break;
     }
 }

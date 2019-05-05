@@ -36,7 +36,7 @@ public:
         MODE_OUT        ///< Output
     } Mode;
     virtual bool init() = 0;
-    virtual void setPinMode(Pin pin, Mode mode) = 0;
+    virtual void setPinMode(Pin pin, Mode mode, bool defaultOut = false) = 0;
     virtual Mode getPinMode(Pin pin) const = 0;
     virtual void setPin(Pin pin, bool value) = 0;
     virtual bool getPin(Pin pin) const = 0;

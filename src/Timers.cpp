@@ -29,5 +29,11 @@ IfTimers::Timespan ICACHE_FLASH_ATTR Timers::beginStopwatch() const {
 
 
 unsigned int ICACHE_FLASH_ATTR Timers::readStopwatch(Timespan start) const {
-    return (unsigned int) (system_get_time() - start);
+    uint32_t now = system_get_time();
+    if (now > start) {
+        return (unsigned int) (now - start);
+    } else {
+        // Microsecond timer overflowed, compensate
+        return (unsigned int) (UINT32_MAX - start + now);
+    }
 }

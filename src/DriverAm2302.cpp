@@ -11,15 +11,25 @@ extern "C" {
     #include "osapi.h"
     #include "user_interface.h"
 }
+#include <cstring>
 
-// Read usually takes 4-5 ms
-#define READ_TIME_OUT_US    50000
-// Duration of "0" pulse is 26-28 us
-#define TRESHOLD_ZERO_MIN_US    10
-#define TRESHOLD_ZERO_MAX_US    40
-// Duration of "1" pulse is 70 us
-#define TRESHOLD_ONE_MIN_US    60
-#define TRESHOLD_ONE_MAX_US    90
+// Detailed timings for the AM2302
+
+// A tiny delay to let the high level propagate to sensor
+const unsigned int preWakeupUs = 10;
+// AM2302 requires a low wakeup pulse with duration 1-10 ms
+const unsigned int wakeupPulseUs = 2000;
+// AM2302 requires a post wakeup delay of 20-40 us
+const unsigned int postWakeupUs = 30;
+// Receiving a message can take up to 5 ms (excluding wakeup pulse)
+// because max message duration is 2 * 80 + 40 * (50 + 70) = 4960 us
+const unsigned int readSampleTimeoutUs = 10000;
+// Duration of AM2302's "0" pulse is 26-28 us
+const unsigned int thresholdZeroMinUs = 10;
+const unsigned int thresholdZeroMaxUs = 40;
+// Duration of AM2302's "1" pulse is 70 us
+const unsigned int thresholdOneMinUs = 50;
+const unsigned int thresholdOneMaxUs = 90;
 
 bool ICACHE_FLASH_ATTR DriverAm2302::init(IfGpio::Pin pin) {
     mPin = pin;
@@ -28,70 +38,94 @@ bool ICACHE_FLASH_ATTR DriverAm2302::init(IfGpio::Pin pin) {
     return true;
 }
 
+/// Note that the first update after boot is likely to fail due to 
+/// sensor being confused about when it's supposed to wake up
 bool ICACHE_FLASH_ATTR DriverAm2302::update() {
-    bool pinSt = false, pinStNew = false;
+    bool pinSt = false, pinStNew = false, retVal;
     unsigned int headerEdges = 0, readDuration = 0, bitDuration, bitNum = 0, glitchNum = 0;
     IfTimers::Timespan readCycleTimer, bitTimer;
-    os_printf("Starting data transfer on pin %u\n", (unsigned int) mPin);
+    memset(&mBuffer, 0, sizeof(mBuffer));
+    //os_printf("AM2302: Starting data transfer on pin %u\n", (unsigned int) mPin);
     // Wake the sensor and request data transfer
-    mGpio.setPinMode(mPin, IfGpio::MODE_OUT);
-    setPinWait(true, 50);
-    setPinWait(false, 2000);
-    setPinWait(true, 40);
+    mGpio.setPinMode(mPin, IfGpio::MODE_OUT, true);
+    mTimers.delay(preWakeupUs);
+    setPinWait(false, wakeupPulseUs);
+    setPinWait(true, postWakeupUs);
     mGpio.setPinMode(mPin, IfGpio::MODE_IN_PULLUP);
-    pinSt = true;
+    // AM2302 starts by pulling the line low for 80 us
+    mTimers.delay(1);
+    pinSt = false;
+    pinStNew = pinSt;
     //os_printf("Read %u\n", pinSt ? 1 : 0);
     readCycleTimer = mTimers.beginStopwatch();
     bitTimer = mTimers.beginStopwatch();
-    pinStNew = pinSt;
-    while (readDuration < READ_TIME_OUT_US && bitNum < (AM2302_MSG_LEN_B * 8)) {
+    while (readDuration < readSampleTimeoutUs && bitNum < (sensorMsgLenB * 8)) {
         pinStNew = mGpio.getPin(mPin);
-        if (pinStNew != pinSt) {
-            bitDuration = mTimers.readStopwatch(bitTimer);
-            // Skip the header
-            if (headerEdges < 3) {
-                headerEdges++;
-            } else {
-                bitTimer = mTimers.beginStopwatch();
-                if (!pinStNew) { // Falling edge
-                    if (bitDuration > TRESHOLD_ZERO_MIN_US && bitDuration < TRESHOLD_ZERO_MAX_US) {
-                        // Detected a '0' bit
-                        mBuffer[bitNum / 8] = mBuffer[bitNum / 8] & ~(1 << (7 - (bitNum % 8)));
-                        bitNum++;
-                    } else if (bitDuration > TRESHOLD_ONE_MIN_US && bitDuration < TRESHOLD_ONE_MAX_US) {
-                        // Detected a '1' bit
-                        mBuffer[bitNum / 8] = mBuffer[bitNum / 8] | (1 << (7 - (bitNum % 8)));
-                        bitNum++;
-                    } else {
-                        // Glitch?
-                        glitchNum++;
-                    }
+        readDuration = mTimers.readStopwatch(readCycleTimer);
+        if (pinStNew == pinSt) {
+            // No edges detected
+            continue;
+        }
+
+        // Edge detected, process
+        bitDuration = mTimers.readStopwatch(bitTimer);
+        if (headerEdges < 2) {
+            headerEdges++; // Skip the "header" pulse (high 80 us)
+        } else {
+            bitTimer = mTimers.beginStopwatch();
+            if (!pinStNew) { // Falling edge
+                if (bitDuration > thresholdZeroMinUs && bitDuration < thresholdZeroMaxUs) {
+                    // Detected a '0' bit
+                    mBuffer[bitNum / 8] = mBuffer[bitNum / 8] & ~(1 << (7 - (bitNum % 8)));
+                    bitNum++;
+                } else if (bitDuration > thresholdOneMinUs && bitDuration < thresholdOneMaxUs) {
+                    // Detected a '1' bit
+                    mBuffer[bitNum / 8] = mBuffer[bitNum / 8] | (1 << (7 - (bitNum % 8)));
+                    bitNum++;
+                } else {
+                    // Glitch?
+                    glitchNum++;
                 }
             }
-            pinSt = pinStNew;
         }
-        readDuration = mTimers.readStopwatch(readCycleTimer);
+        pinSt = pinStNew;
     }
     // Switch to output
-    mGpio.setPinMode(mPin, IfGpio::MODE_OUT);
+    mGpio.setPinMode(mPin, IfGpio::MODE_OUT, true);
     mGpio.setPin(mPin, true);
 
-    if (readDuration >= READ_TIME_OUT_US) {
-        os_printf("Read timed out after %u us, %u bits, %u glitches\n", readDuration, bitNum, glitchNum);
-        os_printf("Buffer: %02X%02X %02X%02X %02X\n", mBuffer[0], mBuffer[1], mBuffer[2], mBuffer[3], mBuffer[4]);
-        return false;
+    if (bitNum < (sensorMsgLenB * 8)) {
+        os_printf("AM2302: Failed, read timed out after %u us! Got %u bits, %u glitches\n", readDuration, bitNum, glitchNum);
+        retVal = false;
     } else {
-        os_printf("Read finished after %u us, %u bits, %u glitches\n", readDuration, bitNum, glitchNum);
-        os_printf("Buffer: %02X%02X %02X%02X %02X\n", mBuffer[0], mBuffer[1], mBuffer[2], mBuffer[3], mBuffer[4]);
-        if ((uint8_t)(mBuffer[0] + mBuffer[1] + mBuffer[2] + mBuffer[3]) == mBuffer[4]) {
+        //os_printf("Read finished after %u us, %u bits, %u glitches\n", readDuration, bitNum, glitchNum);
+        //os_printf("Buffer: %02X%02X %02X%02X %02X\n", mBuffer[0], mBuffer[1], mBuffer[2], mBuffer[3], mBuffer[4]);
+        uint8_t calcCrc = (uint8_t)(mBuffer[0] + mBuffer[1] + mBuffer[2] + mBuffer[3]);
+        if (calcCrc == mBuffer[4]) {
             mHumidity = (mBuffer[0] << 8) + mBuffer[1];
             mTemperature = (mBuffer[2] << 8) + mBuffer[3];
-            return true;
+            retVal =  true;
         } else {
-            os_printf("Checksum mismatch\n");
-            return false;
+            os_printf("AM2302: Failed, checksum mismatch! Calc=0x%02X got=0x%02X\n", calcCrc, mBuffer[4]);
+            retVal =  false;
         }
     }
+
+    if (!retVal || glitchNum) {
+        mDiag.readGlitches += glitchNum;
+        if (!retVal) {
+            mDiag.readFailures++;
+        }
+        os_printf("AM2302: Glitches: %u, buffer: 0x%02X%02X 0x%02X%02X 0x%02X\n"
+            , glitchNum
+            , mBuffer[0]
+            , mBuffer[1]
+            , mBuffer[2]
+            , mBuffer[3]
+            , mBuffer[4]
+        );
+    }
+    return retVal;
 }
 
 void ICACHE_FLASH_ATTR DriverAm2302::setPinWait(bool value, uint32_t durationUs) const {
