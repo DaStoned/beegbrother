@@ -30,6 +30,8 @@ const unsigned int thresholdZeroMaxUs = 40;
 // Duration of AM2302's "1" pulse is 70 us
 const unsigned int thresholdOneMinUs = 50;
 const unsigned int thresholdOneMaxUs = 90;
+// Duration of AM2302's interval between sending bit pulses
+const unsigned int bitIntervalUs = 50;
 
 bool ICACHE_FLASH_ATTR DriverAm2302::init(IfGpio::Pin pin) {
     mPin = pin;
@@ -38,12 +40,28 @@ bool ICACHE_FLASH_ATTR DriverAm2302::init(IfGpio::Pin pin) {
     return true;
 }
 
+bool ICACHE_FLASH_ATTR DriverAm2302::canUpdate() const {
+    uint32_t now = mTimers.getSystemTimeUs();
+    if (now > mLastUpdate) {
+        return now - mLastUpdate > minSampleIntervalUs;
+    } else { // Account for uint32_t overflow
+        return now > mLastUpdate + minSampleIntervalUs;
+    }
+}
+
+/// Blocks for up to 12 ms.
 /// Note that the first update after boot is likely to fail due to 
 /// sensor being confused about when it's supposed to wake up
 bool ICACHE_FLASH_ATTR DriverAm2302::update() {
     bool pinSt = false, pinStNew = false, retVal;
     unsigned int headerEdges = 0, readDuration = 0, bitDuration, bitNum = 0, glitchNum = 0;
     IfTimers::Timespan readCycleTimer, bitTimer;
+    
+    if (!canUpdate()) {
+        os_printf("AM2302: must wait 2 seconds between updates!\n");
+        return false;
+    }
+
     memset(&mBuffer, 0, sizeof(mBuffer));
     //os_printf("AM2302: Starting data transfer on pin %u\n", (unsigned int) mPin);
     // Wake the sensor and request data transfer
@@ -90,6 +108,8 @@ bool ICACHE_FLASH_ATTR DriverAm2302::update() {
         }
         pinSt = pinStNew;
     }
+    // Wait for the final bit interval so we avoid both sides driving the pin
+    mTimers.delay(bitIntervalUs);
     // Switch to output
     mGpio.setPinMode(mPin, IfGpio::MODE_OUT, true);
     mGpio.setPin(mPin, true);
@@ -125,6 +145,7 @@ bool ICACHE_FLASH_ATTR DriverAm2302::update() {
             , mBuffer[4]
         );
     }
+    mLastUpdate = mTimers.getSystemTimeUs();
     return retVal;
 }
 

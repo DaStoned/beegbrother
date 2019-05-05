@@ -1,6 +1,6 @@
 /**
- * @file IfSensorTempHumidity.hpp
- * @brief Interface to a temperature and humidity sensor
+@file IfSensorTempHumidity.hpp
+@brief Interface to a temperature and humidity sensor
 */
 
 #ifndef _IF_SENSOR_TEMP_HUMIDITY_HPP_
@@ -19,16 +19,21 @@ public:
         unsigned int readGlitches;
     } DiagInfo;
     /**
+    There's a frequency limitation to how often the sensor is allowed to sample
+    @return true if we can update the sensor readings
+    */
+    virtual bool canUpdate() const = 0;
+    /**
     Sample the sensor and update stored readings
     @return true if read was successful, false otherwise
     */
     virtual bool update() = 0;
     /**
-    @return relative humidity (in units of 1/10 percent) from most recent update
+    @return relative humidity (in 1/10 percent) from most recent update
     */
     virtual unsigned int getHumidity() const = 0;
     /**
-    @return temperature (in units of 1/10 C) from most recent update
+    @return temperature (in 1/10 C) from most recent update
     */
     virtual int getTemperature() const = 0;
     /**

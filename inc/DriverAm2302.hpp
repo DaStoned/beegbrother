@@ -17,17 +17,20 @@ class DriverAm2302 : public IfSensorTempHumidity {
 public:
     // The length of the AM2302 message in bytes
     static const unsigned int sensorMsgLenB = 5;
+    static const unsigned int minSampleIntervalUs = 2000000;
 
     DriverAm2302(IfGpio& gpio, IfTimers& timers) 
     : mPin(IfGpio::FIRST_PIN_UNUSED)
     , mGpio(gpio)
     , mTimers(timers)
+    , mLastUpdate(0)
     , mHumidity(0)
     , mTemperature(0)
     , mDiag{}
     , mBuffer{}
     { }
     bool init(IfGpio::Pin pin);
+    virtual bool canUpdate() const;
     virtual bool update();
     virtual unsigned int getHumidity() const { return mHumidity; }
     virtual int getTemperature() const { return mTemperature; }
@@ -37,6 +40,7 @@ private:
     IfGpio::Pin mPin;
     IfGpio& mGpio;
     IfTimers& mTimers;
+    unsigned int mLastUpdate;
     unsigned int mHumidity;
     int mTemperature;
     DiagInfo mDiag;
