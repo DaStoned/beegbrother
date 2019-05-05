@@ -42,8 +42,13 @@ bool ICACHE_FLASH_ATTR DriverHx811::update() {
         return false;
     }
 
+    if (mInSleep) {
+        // Wake up the HX811 from sleep. This will be slow.
+        wakeFromSleep();
+    }
+
     if (!canUpdate()) {
-        os_printf("HX811: Must wait %u ms between updates!\n", minSampleIntervalUs / 1000);
+        os_printf("HX811: Not ready for reading! (wait %u ms between updates)\n", minSampleIntervalUs / 1000);
         return false;
     }
     // Set initial state for CLK
@@ -69,11 +74,22 @@ bool ICACHE_FLASH_ATTR DriverHx811::update() {
         mBuffer |= 0xFF000000;
     }
     mLoad = (int) mBuffer;
-    //toSleep();
     return true;
 }
 
-void ICACHE_FLASH_ATTR DriverHx811::toSleep() const {
+void ICACHE_FLASH_ATTR DriverHx811::toSleep() {
     mGpio.setPin(mPinClk, true);
+    mInSleep = true;
     mTimers.delay(spanSleepPulseUs);
+}
+
+void ICACHE_FLASH_ATTR DriverHx811::wakeFromSleep() {
+    // Wake up the HX811 from sleep. This will be slow.
+    IfTimers::Timespan ts = mTimers.beginStopwatch();
+    mGpio.setPin(mPinClk, false);
+    while (!canUpdate() && mTimers.readStopwatch(ts) < spanSettleOutput) {
+        mTimers.delay(1);
+    }
+    mInSleep = false;
+    os_printf("Sleep wakeup took %u us, %s\n", mTimers.readStopwatch(ts), canUpdate() ? "ready" : "timeout");
 }
