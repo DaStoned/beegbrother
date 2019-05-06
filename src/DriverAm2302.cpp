@@ -12,6 +12,9 @@ extern "C" {
     #include "user_interface.h"
 }
 #include <cstring>
+#include <limits>
+
+using namespace std;
 
 // Detailed timings for the AM2302
 
@@ -42,10 +45,12 @@ bool ICACHE_FLASH_ATTR DriverAm2302::init(IfGpio::Pin pin) {
 
 bool ICACHE_FLASH_ATTR DriverAm2302::canUpdate() const {
     uint32_t now = mTimers.getSystemTimeUs();
-    if (now > mLastUpdate) {
+    //os_printf("AM2302: now: %u lastupdate: %u minsampleinterval: %u\n", now, mLastUpdate, minSampleIntervalUs);
+    if (now >= mLastUpdate) {
         return now - mLastUpdate > minSampleIntervalUs;
     } else { // Account for uint32_t overflow
-        return now > mLastUpdate + minSampleIntervalUs;
+        //os_printf("AM2302: overflow compensated interval = %u\n", (std::numeric_limits<uint32_t>::max() - mLastUpdate) + now + 1);
+        return (numeric_limits<uint32_t>::max() - mLastUpdate) + now + 1 > minSampleIntervalUs;
     }
 }
 
