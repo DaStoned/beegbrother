@@ -167,23 +167,24 @@ void ICACHE_FLASH_ATTR user_init()
 
     os_printf("App version: %s, SDK version:%s\n", APP_VERSION_STR, system_get_sdk_version());
 
-#ifdef DWIFI_SSID
+#ifdef WIFI_SSID
     // Prep WiFi
-    char ssid[sizeof(WIFI_SSID) + 1] = "";
-    char password[sizeof(WIFI_PASSWORD) + 1] = "";
+    char ssid[sizeof(TOSTRING(WIFI_SSID))] = TOSTRING(WIFI_SSID);
+    char password[sizeof(TOSTRING(WIFI_PASSWORD))] = TOSTRING(WIFI_PASSWORD);
     struct station_config stationConf;
     //Set station mode
     wifi_set_opmode(STATION_MODE);
     //Set AP settings
-    os_memcpy(&stationConf.ssid, ssid, 32);
-    os_memcpy(&stationConf.password, password, 64);
+    os_memcpy(&stationConf.ssid, ssid, sizeof(ssid));
+    os_memcpy(&stationConf.password, password, sizeof(password));
     if (!wifi_station_set_config(&stationConf)) {
         os_printf("Failed to set WiFi config!\n");
     } else {
-        os_printf("WiFi initialized %u/%u\n", sizeof(ssid), sizeof(password));
+        os_printf("WiFi initialized, lengths %u/%u\n", sizeof(ssid) - 1, sizeof(password) - 1);
     }
 #else
     // Disable wifi
+    os_printf("Disconnecting WiFi\n");
     wifi_station_disconnect();
 #endif
     if (!gpio.init()) {
