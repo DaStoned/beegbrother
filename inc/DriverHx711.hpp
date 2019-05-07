@@ -17,6 +17,12 @@ class IfTimers;
 
 class DriverHx711 : public IfSensorLoad {
 public:
+    /// Permitted combinations of channel and gain
+    typedef enum {
+        ChGain_A128 = 0,
+        ChGain_B32,
+        ChGain_A64
+    } ChGain;
     static const unsigned int sensorMsgLenB = 3;
     static const unsigned int minSampleIntervalUs = 50000;
     /// HX711 output settling time is 400 ms at 10 Hz sampling interval.
@@ -33,8 +39,9 @@ public:
     , mDiag{}
     , mBuffer(0)
     , mInSleep(false)
+    , mChGain(ChGain_A128)
     { }
-    bool init(IfGpio::Pin pinClk, IfGpio::Pin pinData);
+    bool init(IfGpio::Pin pinClk, IfGpio::Pin pinData, ChGain chGain);
     virtual bool canUpdate() const;
     virtual bool update();
     virtual int getLoad() const { return mLoad; }
@@ -50,6 +57,7 @@ private:
     DiagInfo mDiag;
     uint32_t mBuffer;
     bool mInSleep;
+    ChGain mChGain;
 };
 
 #endif // _DRIVER_HX711_HPP_

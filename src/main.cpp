@@ -202,7 +202,7 @@ void ICACHE_FLASH_ATTR user_init()
     os_timer_arm((os_timer_t*)&timerReadTemp, 20000, 1);
 
     // Start load sensor loop
-    if (!loadSens.init(IfGpio::PIN14, IfGpio::PIN12)) {
+    if (!loadSens.init(IfGpio::PIN14, IfGpio::PIN12, DriverHx711::ChGain_A128)) {
         os_printf("Failed to init load sensor\n");
     } else {
         os_printf("Inited load sensor\n");

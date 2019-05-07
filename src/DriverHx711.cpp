@@ -17,9 +17,10 @@ static const unsigned int spanHalfClockUs = 1;
 /// Duration of sleep activation pulse
 static const unsigned int spanSleepPulseUs = 60;
 
-bool ICACHE_FLASH_ATTR DriverHx711::init(IfGpio::Pin pinClk, IfGpio::Pin pinData) {
+bool ICACHE_FLASH_ATTR DriverHx711::init(IfGpio::Pin pinClk, IfGpio::Pin pinData, ChGain chGain) {
     mPinClk = pinClk;
     mPinData = pinData;
+    mChGain = chGain;
     mGpio.setPinMode(mPinClk, IfGpio::MODE_OUT, false);
     mGpio.setPinMode(mPinData, IfGpio::MODE_IN);
     return true;
@@ -35,7 +36,7 @@ bool ICACHE_FLASH_ATTR DriverHx711::canUpdate() const {
 }
 
 bool ICACHE_FLASH_ATTR DriverHx711::update() {
-    unsigned int bitNum = 0;
+    unsigned int bitNum = 0, chGainPulses = 0;
     
     if (mPinData == IfGpio::FIRST_PIN_UNUSED || mPinClk == IfGpio::FIRST_PIN_UNUSED) {
         os_printf("HX711: Driver not initialized\n");
@@ -55,7 +56,7 @@ bool ICACHE_FLASH_ATTR DriverHx711::update() {
     mGpio.setPin(mPinClk, false);
     mTimers.delay(spanHalfClockUs);
     mBuffer = 0;
-    // Loop and read out the sample.
+    // Read out the conversion
     while (bitNum < sensorMsgLenB * 8) {
         mGpio.setPin(mPinClk, true);
         mTimers.delay(spanHalfClockUs);
@@ -65,12 +66,16 @@ bool ICACHE_FLASH_ATTR DriverHx711::update() {
         mBuffer += mGpio.getPin(mPinData) ? 1 : 0;
         bitNum++;
     }
-    // Last pulse needed to finish the transaction.
-    // The only supported configuration here is channel A, gain 128.
-    mGpio.setPin(mPinClk, true);
-    mTimers.delay(spanHalfClockUs);
-    mGpio.setPin(mPinClk, false);
-    os_printf("HX711: Buffer 0x%08X, line %u\n", mBuffer, mGpio.getPin(mPinData) ? 1 : 0);
+    // Last pulse(s) needed to finish the transaction and select channel and
+    // gain for the next conversion
+    while (chGainPulses <= (unsigned int) mChGain) {
+        mGpio.setPin(mPinClk, true);
+        mTimers.delay(spanHalfClockUs);
+        mGpio.setPin(mPinClk, false);
+        mTimers.delay(spanHalfClockUs);
+        chGainPulses++;
+    }
+    os_printf("HX711: Buffer 0x%08X, line %u, ch/gain %u\n", mBuffer, mGpio.getPin(mPinData) ? 1 : 0, (unsigned int) mChGain);
     if (mBuffer & 0x00800000) {
         mBuffer |= 0xFF000000;
     }
@@ -85,7 +90,7 @@ void ICACHE_FLASH_ATTR DriverHx711::toSleep() {
 }
 
 void ICACHE_FLASH_ATTR DriverHx711::wakeFromSleep() {
-    // Wake up the HX711 from sleep. This will be slow.
+    // Wake up the HX711 from sleep. This will be slow - around 410 ms
     IfTimers::Timespan ts = mTimers.beginStopwatch();
     mGpio.setPin(mPinClk, false);
     while (!canUpdate() && mTimers.readStopwatch(ts) < spanSettleOutput) {
