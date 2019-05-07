@@ -167,9 +167,10 @@ void ICACHE_FLASH_ATTR user_init()
 
     os_printf("App version: %s, SDK version:%s\n", APP_VERSION_STR, system_get_sdk_version());
 
+#ifdef DWIFI_SSID
     // Prep WiFi
-    char ssid[32] = WIFI_SSID;
-    char password[64] = WIFI_PASSWORD;
+    char ssid[sizeof(WIFI_SSID) + 1] = "";
+    char password[sizeof(WIFI_PASSWORD) + 1] = "";
     struct station_config stationConf;
     //Set station mode
     wifi_set_opmode(STATION_MODE);
@@ -178,8 +179,13 @@ void ICACHE_FLASH_ATTR user_init()
     os_memcpy(&stationConf.password, password, 64);
     if (!wifi_station_set_config(&stationConf)) {
         os_printf("Failed to set WiFi config!\n");
+    } else {
+        os_printf("WiFi initialized %u/%u\n", sizeof(ssid), sizeof(password));
     }
-
+#else
+    // Disable wifi
+    wifi_station_disconnect();
+#endif
     if (!gpio.init()) {
         os_printf("Failed to init GPIO!\n");
     }
@@ -203,5 +209,5 @@ void ICACHE_FLASH_ATTR user_init()
     }
 
     os_timer_setfn((os_timer_t*)&timerReadLoad, (os_timer_func_t *)readLoadCb, NULL);
-    os_timer_arm((os_timer_t*)&timerReadLoad, 2000, 1);
+    os_timer_arm((os_timer_t*)&timerReadLoad, 10000, 1);
 }

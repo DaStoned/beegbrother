@@ -55,7 +55,7 @@ bool ICACHE_FLASH_ATTR DriverHx711::update() {
     mGpio.setPin(mPinClk, false);
     mTimers.delay(spanHalfClockUs);
     mBuffer = 0;
-    // Loop and read out the sample
+    // Loop and read out the sample.
     while (bitNum < sensorMsgLenB * 8) {
         mGpio.setPin(mPinClk, true);
         mTimers.delay(spanHalfClockUs);
@@ -65,7 +65,8 @@ bool ICACHE_FLASH_ATTR DriverHx711::update() {
         mBuffer += mGpio.getPin(mPinData) ? 1 : 0;
         bitNum++;
     }
-    // Last pulse needed to finish the transaction
+    // Last pulse needed to finish the transaction.
+    // The only supported configuration here is channel A, gain 128.
     mGpio.setPin(mPinClk, true);
     mTimers.delay(spanHalfClockUs);
     mGpio.setPin(mPinClk, false);

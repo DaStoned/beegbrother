@@ -11,7 +11,7 @@ BIN_DIR := bin
 SRC_DIR := src
 INC_DIR := inc
 
-DEFINES += -DICACHE_FLASH
+DEFINES += -DICACHE_FLASH -DUSE_OPTIMIZE_PRINTF
 CCFLAGS += \
 	-Os \
 	-Wpointer-arith \
