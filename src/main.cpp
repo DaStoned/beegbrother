@@ -8,6 +8,7 @@
 #include "Timers.hpp"
 #include "DriverAm2302.hpp"
 #include "DriverHx711.hpp"
+#include "Scale.hpp"
 
 extern "C" {
     // Include the C-only SDK headers
@@ -19,8 +20,10 @@ extern "C" {
     void ICACHE_FLASH_ATTR user_init();
 }
 
+using namespace common;
+
 #define APP_VERSION_MAJOR       0
-#define APP_VERSION_MINOR       1
+#define APP_VERSION_MINOR       2
 #define APP_VERSION_STR         (TOSTRING(APP_VERSION_MAJOR) "." TOSTRING(APP_VERSION_MINOR))
 
 //----------------------- Set up partition table ----------------------
@@ -135,6 +138,7 @@ DriverGpio gpio;
 Timers timers;
 DriverAm2302 tempSens(gpio, timers);
 DriverHx711 loadSens(gpio, timers);
+Scale scale(loadSens, -24800);
 
 static volatile os_timer_t timerReadTemp;
 static volatile os_timer_t timerReadLoad;
@@ -152,12 +156,19 @@ static void ICACHE_FLASH_ATTR readTempCb(os_event_t *events) {
     }
 }
 
+
 static void ICACHE_FLASH_ATTR readLoadCb(os_event_t *events) {
-    if (loadSens.update()) {
-        os_printf("Load: %d \n", loadSens.getLoad());
-    } else {
-        os_printf("Load sensor failed to update!\n");
+    double weight;
+    char buf[20];
+    static bool tared = false;
+
+    if (!tared) {
+        scale.tare();
+        tared = true;
     }
+    weight = scale.getWeight();
+    //c_sprintf(buf, "%.3f", weight);
+    os_printf("Weight: %s kg\n", double_snprintf3(buf, sizeof(buf), weight));
 }
 
 void ICACHE_FLASH_ATTR user_init()
@@ -210,5 +221,5 @@ void ICACHE_FLASH_ATTR user_init()
     }
 
     os_timer_setfn((os_timer_t*)&timerReadLoad, (os_timer_func_t *)readLoadCb, NULL);
-    os_timer_arm((os_timer_t*)&timerReadLoad, 10000, 1);
+    os_timer_arm((os_timer_t*)&timerReadLoad, 2000, 1);
 }

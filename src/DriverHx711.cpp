@@ -75,7 +75,7 @@ bool ICACHE_FLASH_ATTR DriverHx711::update() {
         mTimers.delay(spanHalfClockUs);
         chGainPulses++;
     }
-    os_printf("HX711: Buffer 0x%08X, line %u, ch/gain %u\n", mBuffer, mGpio.getPin(mPinData) ? 1 : 0, (unsigned int) mChGain);
+    //os_printf("HX711: Buffer 0x%08X, line %u, ch/gain %u\n", mBuffer, mGpio.getPin(mPinData) ? 1 : 0, (unsigned int) mChGain);
     if (mBuffer & 0x00800000) {
         mBuffer |= 0xFF000000;
     }
