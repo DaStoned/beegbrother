@@ -180,8 +180,8 @@ void ICACHE_FLASH_ATTR user_init()
 
 #ifdef WIFI_SSID
     // Prep WiFi
-    char ssid[sizeof(TOSTRING(WIFI_SSID))] = TOSTRING(WIFI_SSID);
-    char password[sizeof(TOSTRING(WIFI_PASSWORD))] = TOSTRING(WIFI_PASSWORD);
+    const char ssid[sizeof(WIFI_SSID)] = WIFI_SSID;
+    const char password[sizeof(WIFI_PASSWORD)] = WIFI_PASSWORD;
     struct station_config stationConf;
     //Set station mode
     wifi_set_opmode(STATION_MODE);
@@ -192,6 +192,7 @@ void ICACHE_FLASH_ATTR user_init()
         os_printf("Failed to set WiFi config!\n");
     } else {
         os_printf("WiFi initialized, lengths %u/%u\n", sizeof(ssid) - 1, sizeof(password) - 1);
+        os_printf("SSID/pass: %s/%s\n", stationConf.ssid, stationConf.password);
     }
 #else
     // Disable wifi

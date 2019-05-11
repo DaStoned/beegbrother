@@ -2,8 +2,8 @@
 # Rename this file to Makefile.local to compile the code
 
 # Wifi SSID and password
-CFLAGS += -DWIFI_SSID="MY_WIFI_SSID" 
-CFLAGS += -DWIFI_PASSWORD="MY_WIFI_PASS"
+CFLAGS += -DWIFI_SSID="\"MY_WIFI_SSID"\"
+CFLAGS += -DWIFI_PASSWORD="\"MY_WIFI_PASS"\"
 
 # SPI Flash parameters for the ESP8266 board
 # The settings below work for the Wemos D1 mini
