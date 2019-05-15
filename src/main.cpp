@@ -14,6 +14,7 @@ extern "C" {
     // Include the C-only SDK headers
     #include "osapi.h"
     #include "user_interface.h"
+    #include "espmissingincludes.h"
 
     // Declare these as C functions to allow SDK to call them
     void ICACHE_FLASH_ATTR user_pre_init(void);
@@ -91,30 +92,44 @@ void ICACHE_FLASH_ATTR user_pre_init(void) {
 extern void (*__init_array_start)(void);
 extern void (*__init_array_end)(void);
 
-static void do_global_ctors(void)
+static void ICACHE_FLASH_ATTR do_global_ctors(void)
 {
         void (**p)(void);
         for (p = &__init_array_start; p != &__init_array_end; ++p)
                 (*p)();
 }
+
 //------------------------- Set up user tasks -------------------------
+
+// Global objects
+DriverGpio gpio;
+Timers timers;
+DriverAm2302 tempSens(gpio, timers);
+DriverHx711 loadSens(gpio, timers);
+Scale scale(loadSens, -24200);
+
+static volatile os_timer_t timerReadTemp;
+static volatile os_timer_t timerReadLoad;
+static volatile os_timer_t timerBtnDebounce;
 
 const unsigned int mainTaskPrio = 0;
 const unsigned int mainTaskQueueLen = 1;
 const unsigned int tracePeriodUs = 1000000;
 os_event_t mainTaskQueue[mainTaskQueueLen];
 
-static void mainTask(os_event_t *events);
-
 // ESP-12 modules have LED on GPIO2. Change to another GPIO
 // for other boards.
 static const int ledPin = 2;
+static volatile bool buttonPress = false;
 
 static void ICACHE_FLASH_ATTR mainTask(os_event_t *events)
 {
     //static int i = 0;
     static uint32_t tsPrev = 0;
     uint32_t tsNow = system_get_time();
+    double weight = 0.0;
+    char floatBuf[20];
+
     if (tsPrev == 0) {
         tsPrev = system_get_time();
     }
@@ -130,18 +145,16 @@ static void ICACHE_FLASH_ATTR mainTask(os_event_t *events)
             gpio_output_set((1 << ledPin), 0, (1 << ledPin), 0);
         }
     } 
+    if (buttonPress) {
+        weight = scale.getWeight();
+        os_printf("Taring scale, before %s kg,", double_snprintf3(floatBuf, sizeof(floatBuf), weight));
+        scale.tare();
+        weight = scale.getWeight();
+        os_printf(" after %s kg\n", double_snprintf3(floatBuf, sizeof(floatBuf), weight));
+        buttonPress = false;
+    }
     system_os_post(mainTaskPrio, 0, 0 );
 }
-
-// Global objects
-DriverGpio gpio;
-Timers timers;
-DriverAm2302 tempSens(gpio, timers);
-DriverHx711 loadSens(gpio, timers);
-Scale scale(loadSens, -24800);
-
-static volatile os_timer_t timerReadTemp;
-static volatile os_timer_t timerReadLoad;
 
 static void ICACHE_FLASH_ATTR readTempCb(os_event_t *events) {
     if (tempSens.update()) {
@@ -160,15 +173,38 @@ static void ICACHE_FLASH_ATTR readTempCb(os_event_t *events) {
 static void ICACHE_FLASH_ATTR readLoadCb(os_event_t *events) {
     double weight;
     char buf[20];
-    static bool tared = false;
-
-    if (!tared) {
-        scale.tare();
-        tared = true;
-    }
     weight = scale.getWeight();
     //c_sprintf(buf, "%.3f", weight);
     os_printf("Weight: %s kg\n", double_snprintf3(buf, sizeof(buf), weight));
+}
+
+static bool btnInDebounce = false;
+
+static void ICACHE_FLASH_ATTR gpio_intr_handler(void *arg) {
+    uint32 gpio_status = GPIO_REG_READ(GPIO_STATUS_ADDRESS);
+    GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, gpio_status);
+    gpio_pin_intr_state_set(GPIO_ID_PIN(5), GPIO_PIN_INTR_DISABLE);
+    btnInDebounce = true;
+    os_timer_arm((os_timer_t*)&timerBtnDebounce, 50, 0);
+    os_printf("B %0X\n", gpio_status);
+}
+
+static void ICACHE_FLASH_ATTR btnDebounceCb(os_event_t *events) {
+    if (btnInDebounce) {
+        if (gpio.getPin(IfGpio::PIN5)) {
+            os_printf("Yup, B\n");
+            buttonPress = true;
+            // Post release delay
+            os_timer_arm((os_timer_t*)&timerBtnDebounce, 50, 0);
+        } else {
+            os_printf("B glitch!\n");
+            gpio_pin_intr_state_set(GPIO_ID_PIN(5), GPIO_PIN_INTR_POSEDGE);
+        }
+        btnInDebounce = false;
+    } else {
+        // Re-enable interrupt
+        gpio_pin_intr_state_set(GPIO_ID_PIN(5), GPIO_PIN_INTR_POSEDGE);
+    }
 }
 
 void ICACHE_FLASH_ATTR user_init()
@@ -192,7 +228,6 @@ void ICACHE_FLASH_ATTR user_init()
         os_printf("Failed to set WiFi config!\n");
     } else {
         os_printf("WiFi initialized, lengths %u/%u\n", sizeof(ssid) - 1, sizeof(password) - 1);
-        os_printf("SSID/pass: %s/%s\n", stationConf.ssid, stationConf.password);
     }
 #else
     // Disable wifi
@@ -201,6 +236,13 @@ void ICACHE_FLASH_ATTR user_init()
 #endif
     if (!gpio.init()) {
         os_printf("Failed to init GPIO!\n");
+    } else {
+        ETS_GPIO_INTR_DISABLE();
+        ETS_GPIO_INTR_ATTACH(gpio_intr_handler, NULL);
+        gpio.setPinMode(IfGpio::PIN5, IfGpio::MODE_IN);
+        GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, BIT(5));
+        gpio_pin_intr_state_set(GPIO_ID_PIN(5), GPIO_PIN_INTR_POSEDGE);
+        ETS_GPIO_INTR_ENABLE();
     }
 
     // Start blinky loop
@@ -223,4 +265,6 @@ void ICACHE_FLASH_ATTR user_init()
 
     os_timer_setfn((os_timer_t*)&timerReadLoad, (os_timer_func_t *)readLoadCb, NULL);
     os_timer_arm((os_timer_t*)&timerReadLoad, 2000, 1);
+
+    os_timer_setfn((os_timer_t*)&timerBtnDebounce, (os_timer_func_t *)btnDebounceCb, NULL);
 }
