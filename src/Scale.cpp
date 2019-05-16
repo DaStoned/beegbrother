@@ -19,14 +19,17 @@ double ICACHE_FLASH_ATTR Scale::getWeight() const {
     return (double) (readLoadSensor() - mTareOffset) / mCalib;
 }
 
-double ICACHE_FLASH_ATTR Scale::readLoadSensor() const {
-    while (!mAdc.canUpdate()) {
+int ICACHE_FLASH_ATTR Scale::readLoadSensor() const {
+    unsigned int retries = 0;
+    while (!mAdc.canUpdate() && retries < 1000000) {
         //os_printf(".");
+        retries++;
     }
     if (!mAdc.update()) {
         //os_printf("Scale: Failed to update ADC!\n");
+        return 0;
     } else {
         //os_printf("Scale: ADC value %d\n", mAdc.getLoad());
+        return mAdc.getLoad();
     }
-    return mAdc.getLoad();
 }

@@ -9,12 +9,13 @@
 #include "DriverAm2302.hpp"
 #include "DriverHx711.hpp"
 #include "Scale.hpp"
+#include "espmissingincludes.h"
 
 extern "C" {
     // Include the C-only SDK headers
     #include "osapi.h"
     #include "user_interface.h"
-    #include "espmissingincludes.h"
+    #include "espconn.h"
 
     // Declare these as C functions to allow SDK to call them
     void ICACHE_FLASH_ATTR user_pre_init(void);
@@ -106,7 +107,7 @@ DriverGpio gpio;
 Timers timers;
 DriverAm2302 tempSens(gpio, timers);
 DriverHx711 loadSens(gpio, timers);
-Scale scale(loadSens, -24200);
+Scale scale(loadSens, -24200, -418509);
 
 static volatile os_timer_t timerReadTemp;
 static volatile os_timer_t timerReadLoad;
@@ -121,11 +122,13 @@ os_event_t mainTaskQueue[mainTaskQueueLen];
 // for other boards.
 static const int ledPin = 2;
 static volatile bool buttonPress = false;
+static volatile bool wifiConnected = false;
 
 static void ICACHE_FLASH_ATTR mainTask(os_event_t *events)
 {
     //static int i = 0;
     static uint32_t tsPrev = 0;
+    static bool mDnsDone = false;
     uint32_t tsNow = system_get_time();
     double weight = 0.0;
     char floatBuf[20];
@@ -147,11 +150,27 @@ static void ICACHE_FLASH_ATTR mainTask(os_event_t *events)
     } 
     if (buttonPress) {
         weight = scale.getWeight();
-        os_printf("Taring scale, before %s kg,", double_snprintf3(floatBuf, sizeof(floatBuf), weight));
         scale.tare();
+        os_printf("Taring scale, before %s kg,", double_snprintf3(floatBuf, sizeof(floatBuf), weight));
         weight = scale.getWeight();
         os_printf(" after %s kg\n", double_snprintf3(floatBuf, sizeof(floatBuf), weight));
         buttonPress = false;
+    }
+
+    if (wifiConnected && !mDnsDone) {
+        // Set up mDNS
+        static struct mdns_info dnsInfo;
+        struct ip_info ipInfo;
+        if (!wifi_get_ip_info(STATION_IF, &ipInfo)) {
+            os_printf("Failed to get IP info\n");
+        }
+        //static char hostName[] = "taru00";
+        dnsInfo.host_name = (char*) "taru00";
+        dnsInfo.ipAddr = ipInfo.ip.addr;
+        dnsInfo.server_name = (char*) "taruserver";
+        dnsInfo.server_port = 8080;
+        espconn_mdns_init(&dnsInfo);
+        mDnsDone = true;
     }
     system_os_post(mainTaskPrio, 0, 0 );
 }
@@ -204,6 +223,47 @@ static void ICACHE_FLASH_ATTR btnDebounceCb(os_event_t *events) {
     } else {
         // Re-enable interrupt
         gpio_pin_intr_state_set(GPIO_ID_PIN(5), GPIO_PIN_INTR_POSEDGE);
+    }
+}
+
+void ICACHE_FLASH_ATTR wifi_handler_event_cb(System_Event_t *evt) {
+    os_printf("WiFI: event %x\n", evt->event);
+    switch (evt->event) {
+    case EVENT_STAMODE_CONNECTED:
+        os_printf("WiFI: connect to ssid %s, channel %d\n",
+        evt->event_info.connected.ssid,
+        evt->event_info.connected.channel);
+        break;
+    case EVENT_STAMODE_DISCONNECTED:
+        os_printf("WiFI: disconnect from ssid %s, reason %d\n",
+        evt->event_info.disconnected.ssid,
+        evt->event_info.disconnected.reason);
+        break;
+    case EVENT_STAMODE_AUTHMODE_CHANGE:
+        os_printf("WiFI: mode: %d -> %d\n",
+        evt->event_info.auth_change.old_mode,
+        evt->event_info.auth_change.new_mode);
+        break;
+    case EVENT_STAMODE_GOT_IP:
+        os_printf("WiFI: ip:" IPSTR ",mask:" IPSTR ",gw:" IPSTR,
+        IP2STR(&evt->event_info.got_ip.ip),
+        IP2STR(&evt->event_info.got_ip.mask),
+        IP2STR(&evt->event_info.got_ip.gw));
+        os_printf("\n");
+        wifiConnected = true;
+        break;
+    case EVENT_SOFTAPMODE_STACONNECTED:
+        os_printf("WiFI: station: " MACSTR "join, AID = %d\n",
+        MAC2STR(evt->event_info.sta_connected.mac),
+        evt->event_info.sta_connected.aid);
+        break;
+    case EVENT_SOFTAPMODE_STADISCONNECTED:
+        os_printf("WiFI: station: " MACSTR "leave, AID = %d\n",
+        MAC2STR(evt->event_info.sta_disconnected.mac),
+        evt->event_info.sta_disconnected.aid);
+        break;
+    default:
+        break;
     }
 }
 
@@ -267,4 +327,7 @@ void ICACHE_FLASH_ATTR user_init()
     os_timer_arm((os_timer_t*)&timerReadLoad, 2000, 1);
 
     os_timer_setfn((os_timer_t*)&timerBtnDebounce, (os_timer_func_t *)btnDebounceCb, NULL);
+
+    wifi_set_event_handler_cb(wifi_handler_event_cb);
+
 }

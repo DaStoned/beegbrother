@@ -10,10 +10,10 @@
 
 class Scale {
 public:
-    Scale(DriverHx711& adc, int calib)
+    Scale(DriverHx711& adc, int calib, int tareOffset = 0)
         : mAdc(adc)
         , mCalib(calib)
-        , mTareOffset(0)
+        , mTareOffset(tareOffset)
     {}
     void setCalib(int calib) { mCalib = calib; }
     int getCalib() const { return mCalib; }
@@ -22,7 +22,7 @@ public:
     void tare();
     double getWeight(void) const;
 private:
-    double readLoadSensor() const;
+    int readLoadSensor() const;
     DriverHx711& mAdc;
     int mCalib;
     int mTareOffset;
