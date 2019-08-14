@@ -72,4 +72,4 @@ A proper prototype with a hand-made scale body, 3D printed load sensor holders a
 
 ![Prototype overview](doc/img/02_prototype_scale.jpg?raw=true "Prototype overview")
 
-![Prototype load sensor holder](doc/img/doc/img/03_prototype_scale_load_sensor.jpg?raw=true "Prototype load sensor holder")
+![Prototype load sensor holder](doc/img/03_prototype_scale_load_sensor.jpg?raw=true "Prototype load sensor holder")
