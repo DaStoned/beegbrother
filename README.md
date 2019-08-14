@@ -62,3 +62,14 @@ export PATH="$SDK_LOCATION/xtensa-lx106-elf/bin:$PATH"
   ```
   $ make flash
   ```
+# Prototype 
+
+Initial prototype to see how the ESP8266, load sensors and temp/humidity sensor could be brought together. Arduino board not used except the breadboard.
+
+![Early prototype](doc/img/01_early_prototype.jpg?raw=true "Early prototype")
+ 
+A proper prototype with a hand-made scale body, 3D printed load sensor holders and a basic waterproof enclosure for the MCU board.
+
+![Prototype overview](doc/img/02_prototype_scale.jpg?raw=true "Prototype overview")
+
+![Prototype load sensor holder](doc/img/doc/img/03_prototype_scale_load_sensor.jpg?raw=true "Prototype load sensor holder")
